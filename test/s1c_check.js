@@ -12,8 +12,8 @@ b.on("deviceReady", (dev) => {
         dev.get_sensors_status();
         clearInterval(refresh);
         dev.on("power", (status_array) => {
-            console.log("count is on " + status_array[0]);
-            console.log("sensors is on " + status_array[1]);
+            console.log("count is on " + status_array["count"]);
+            console.log("sensors is on " + status_array["sensors"]);
         });
         
     } else {
