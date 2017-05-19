@@ -375,7 +375,8 @@ device.prototype.s1c = function() {
             case 6: //get from check_power
                 var count = payload[4];
                 var sensors = payload[0x6];
-
+                console.log("count: " + count);
+                console.log("sensors: " + sensors);
                 var i, sensors_a;
 
                 sensors_a = [
@@ -384,6 +385,7 @@ device.prototype.s1c = function() {
                         results = [];
                         for (j = 0; j < count; j++) {
                         i = j;
+                        console.log("Sensor number #"+(i+1)+ " " + sensors[i]);
                         results.push(sensors[i * {
                             83: (i + 1) * 83
                         }]);
@@ -391,16 +393,14 @@ device.prototype.s1c = function() {
                         return results;
                     })()
                 ];
-                for (i=0; i < sensors_a.length; i++){
-                    console.log("Sensor number #"+(i+1)+ " " + sensors_a[i]);
-                }
+                
                 console.log("log 1- " + payload[1]);
                 console.log("log 2- " + payload[2]);
                 console.log("log 3- " + payload[3]);
                 console.log("log 4- " + payload[4]);
                 console.log("log 5- " + payload[5]);
                 console.log("log 6- " + payload[6]);
-                console.log("log 6- " + payload[7]);
+                console.log("log 7- " + payload[7]);
                 var result = {
                     'count': count,
                     'sensors': sensors
