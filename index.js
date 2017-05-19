@@ -383,7 +383,7 @@ device.prototype.s1c = function() {
                         var j, len1, ref, results;
                         results = [];
                         for (j = 0; j < count; j++) {
-                        i = ref[j];
+                        i = j;
                         results.push(sensors[i * {
                             83: (i + 1) * 83
                         }]);
