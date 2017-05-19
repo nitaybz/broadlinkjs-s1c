@@ -436,6 +436,7 @@ device.prototype.s1c = function() {
     this.on("payload", (err, payload) => {
         console.log("payload: " + payload);
         var param = payload[0];
+        console.log("param: " + param);
         switch (param) {
             case 1: //get from check_power
                 var count = ord(payload[0x4]);
