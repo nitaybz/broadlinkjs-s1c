@@ -438,7 +438,7 @@ device.prototype.s1c = function() {
         var param = payload[0];
         console.log("param: " + param);
         switch (param) {
-            case 1: //get from check_power
+            case 6: //get from check_power
                 var count = ord(payload[0x4]);
                 var sensors = payload[0x6];
                 var result = {
