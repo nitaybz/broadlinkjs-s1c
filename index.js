@@ -368,64 +368,61 @@ device.prototype.s1c = function() {
     }
 
     this.on("payload", (err, payload) => {
-        console.log("payload: " + payload);
         var param = payload[0];
 
         switch (param) {
             case 6: //get from get_sensors_status
                 var count = payload[4];
-                var sensors;
-                sensors = [
-                    (function() {
-                        var j, k, results;
-                        results = [];
-                        for (j = 0; j < count; j++) {
-                            var sensor = {};
-                            switch (payload[(j*83) + 3 + 6]){
-                                case 33:
-                                    sensor.type = "Motion Sensor";
-                                    break;
-                                case 49:
-                                    sensor.type = "Door Sensor";
-                                    break;
-                            }
-                            switch (payload[(j*83) + 6]){
-                                case 0:
-                                    sensor.status = 0;
-                                    break;
-                                case 128:
-                                    sensor.status = 0;
-                                    break;
-                                case 16:
-                                    sensor.status = 1;
-                                    break;
-                                case 144:
-                                    sensor.status = 1;
-                                    break;
-                            }
-                            sensor.name = Buffer.alloc(22, 0);
-                            for (var i=4; i < 26; i++){
-                                sensor.name[i-4] = payload[(j*83)+i+6]
-                            }
-                            var sensorSerial = Buffer.alloc(4, 0);
-                            for (var i=26; i < 30; i++){
-                                sensorSerial[i-26] = payload[(j*83)+i+6]
-                            }
-                            sensor.serial = unescape(encodeURIComponent(sensorSerial))
-                                .split('').map(function(v){
-                                    return v.charCodeAt(0).toString(16)
-                                }).join('')
-                            results.push(sensor);
-                        }
-                        return results;
-                    })()
-                ]
-                
-                var result = {
+                var j, k, sensors;
+                sensors = [];
+                for (j = 0; j < count; j++) {
+                    var sensor = {};
+                    switch (payload[(j*83) + 3 + 6]){
+                        case 33:
+                            sensor.type = "Motion Sensor";
+                            break;
+                        case 49:
+                            sensor.type = "Door Sensor";
+                            break;
+                    }
+                    switch (payload[(j*83) + 6]){
+                        case 0:
+                            sensor.status = 0;
+                            break;
+                        case 128:
+                            sensor.status = 0;
+                            break;
+                        case 16:
+                            sensor.status = 1;
+                            break;
+                        case 144:
+                            sensor.status = 1;
+                            break;
+                    }
+                    sensor.name = Buffer.alloc(22, 0);
+                    for (var i=4; i < 26; i++){
+                        sensor.name[i-4] = payload[(j*83)+i+6]
+                    }
+                    var sensorSerial = Buffer.alloc(4, 0);
+                    for (var i=26; i < 30; i++){
+                        sensorSerial[i-26] = payload[(j*83)+i+6]
+                    }
+                    sensor.serial = unescape(encodeURIComponent(sensorSerial))
+                        .split('').map(function(v){
+                            return v.charCodeAt(0).toString(16)
+                        }).join('')
+                    
+                    // console.log("sensor #" + (j+1) + " name: " + sensor.name)
+                    // console.log("sensor #" + (j+1) + " type: " + sensor.type)
+                    // console.log("sensor #" + (j+1) + " status: " + sensor.status);
+                    // console.log("sensor #" + (j+1) + " serial: " + sensor.serial)
+                    sensors.push(sensor);
+                }
+                var results = {
                     'count': count,
                     'sensors': sensors
                 }
-                this.emit("sensors_status", result);
+                this.emit("sensors_status", results);
                 break;
             case 3:
                 console.log('case 3');
