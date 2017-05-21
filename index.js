@@ -4,8 +4,8 @@ var broadlink = require('broadlinkjs-s1c');
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    UUIDGen = homebridge.hap.uuid;
     homebridge.registerPlatform("homebridge-broadlink-s1c", "broadlinkS1C", broadlinkS1C);
+    UUIDGen = homebridge.hap.uuid;
 }
 
 function broadlinkS1C(log, config, api) {
