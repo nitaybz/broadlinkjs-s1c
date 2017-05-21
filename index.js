@@ -370,43 +370,62 @@ device.prototype.s1c = function() {
     this.on("payload", (err, payload) => {
         console.log("payload: " + payload);
         var param = payload[0];
-        console.log("param: " + param);
-        switch (param) {
-            case 6: //get from check_power
-                var count = payload[4];
-                var sensors = payload[0x6];
-                console.log("count: " + count);
-                console.log("sensors: " + sensors);
-                var i, sensors_a;
 
-                sensors_a = [
+        switch (param) {
+            case 6: //get from get_sensors_status
+                var count = payload[4];
+                var sensors;
+                sensors = [
                     (function() {
-                        var j, len1, ref, results;
+                        var j, k, results;
                         results = [];
                         for (j = 0; j < count; j++) {
-                        i = j;
-                        console.log("Sensor number #"+(i+1)+ " " + sensors[i]);
-                        results.push(sensors[i * {
-                            83: (i + 1) * 83
-                        }]);
+                            var sensor = {};
+                            switch (payload[(j*83) + 3 + 6]){
+                                case 33:
+                                    sensor.type = "Motion Sensor";
+                                    break;
+                                case 49:
+                                    sensor.type = "Door Sensor";
+                                    break;
+                            }
+                            switch (payload[(j*83) + 6]){
+                                case 0:
+                                    sensor.status = 0;
+                                    break;
+                                case 128:
+                                    sensor.status = 0;
+                                    break;
+                                case 16:
+                                    sensor.status = 1;
+                                    break;
+                                case 144:
+                                    sensor.status = 1;
+                                    break;
+                            }
+                            sensor.name = Buffer.alloc(22, 0);
+                            for (var i=4; i < 26; i++){
+                                sensor.name[i-4] = payload[(j*83)+i+6]
+                            }
+                            var sensorSerial = Buffer.alloc(4, 0);
+                            for (var i=26; i < 30; i++){
+                                sensorSerial[i-26] = payload[(j*83)+i+6]
+                            }
+                            sensor.serial = unescape(encodeURIComponent(sensorSerial))
+                                .split('').map(function(v){
+                                    return v.charCodeAt(0).toString(16)
+                                }).join('')
+                            results.push(sensor);
                         }
                         return results;
                     })()
-                ];
+                ]
                 
-                console.log("log 1- " + payload[1]);
-                console.log("log 2- " + payload[2]);
-                console.log("log 3- " + payload[3]);
-                console.log("log 4- " + payload[4]);
-                console.log("log 5- " + payload[5]);
-                console.log("log 6- " + payload[6]);
-                console.log("log 7- " + payload[7]);
                 var result = {
                     'count': count,
                     'sensors': sensors
                 }
-                console.log("results: " + result);
-                this.emit("power", result);
+                this.emit("sensors_status", result);
                 break;
             case 3:
                 console.log('case 3');
@@ -418,4 +437,3 @@ device.prototype.s1c = function() {
 
     });
 }
-
