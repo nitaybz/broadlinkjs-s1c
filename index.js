@@ -11,6 +11,7 @@ module.exports = function(homebridge) {
 function broadlinkS1C(log, config, api) {
     this.log = log;
     this.config = config;
+    this.name = config.name;
     this.ip = config.ip;
     this.mac = config.mac;
     if (api) {
@@ -22,74 +23,51 @@ function broadlinkS1C(log, config, api) {
 broadlinkS1C.prototype = {
     accessories: function(callback) {
         //For each device in cfg, create an accessory!
-        var foundAccessories = this.config.accessories;
         var myAccessories = [];
-
-        if (!this.ip && !this.mac) throw new Error("You must provide a config value for 'ip' or 'mac'.");
-
-        // MAC string to MAC buffer
-        this.mac_buff = function(mac) {
-            var mb = new Buffer(6);
-            if (mac) {
-                var values = mac.split(':');
-                if (!values || values.length !== 6) {
-                    throw new Error('Invalid MAC [' + mac + ']; should follow pattern ##:##:##:##:##:##');
-                }
-                for (var i = 0; i < values.length; ++i) {
-                    var tmpByte = parseInt(values[i], 16);
-                    mb.writeUInt8(tmpByte, i);
-                }
-            } else {
-                //this.log("MAC address emtpy, using IP: " + this.ip);
-            }
-            return mb;
-        }
-
-        for (var j = 0; j < foundAccessories.length; j++){
-            var foundSensor = [{}];
-            var b = new broadlink();
-            b.discover();
-            b.on("deviceReady", (dev) => {
-                if (this.mac_buff(this.mac).equals(dev.mac) || dev.host.address == this.ip) {
-                    if (dev.type == "S1C") {
-                        dev.get_sensors_status();
-                        dev.on("sensors_status", (status_array) => {
-                            var count = status_array["count"];
-                            var sensors = status_array["sensors"];
-                            clearInterval(refresh);
-                            for (var i = 0; i < count; i++) {
-                                if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
-                                    foundSensor[i].sensorName = sensors[i].name;
-                                    foundSensor[i].serial = sensors[i].serial;
-                                    foundSensor[i].type = sensors[i].type;
-                                    var accessory = new BroadlinkSensor(this.log, foundSensor[i], foundAccessories[j]);
-                                    myAccessories.push(accessory);
-                                    this.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
-                                }
+        var foundSensor = [{}];
+        var b = new broadlink();
+        b.discover();
+        b.on("deviceReady", (dev) => {
+            if (this.mac_buff(this.mac).equals(dev.mac) || dev.host.address == this.ip) {
+                if (dev.type == "S1C") {
+                    dev.get_sensors_status();
+                    dev.on("sensors_status", (status_array) => {
+                        var count = status_array["count"];
+                        var sensors = status_array["sensors"];
+                        clearInterval(refresh);
+                        for (var i = 0; i < count; i++) {
+                            if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
+                                foundSensor[i].accessoryName = this.name;
+                                foundSensor[i].sensorName = sensors[i].name;
+                                foundSensor[i].serial = sensors[i].serial;
+                                foundSensor[i].type = sensors[i].type;
+                                foundSensor[i].ip = sensors[i].ip;
+                                foundSensor[i].mac = sensors[i].mac;
+                                var accessory = new BroadlinkSensor(this.log, foundSensor[i]);
+                                myAccessories.push(accessory);
+                                this.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
                             }
-                            callback(myAccessories);
-                        });
-                    } else {
-                        console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
-                        dev.exit();
-                    }
+                        }
+                        callback(myAccessories);
+                    });
+                } else {
+                    console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
+                    dev.exit();
                 }
-            });
-            var refresh = setInterval(function(){
-                b.discover();
-            }, 1000);
-        }
-        
+            }
+        });
+        var refresh = setInterval(function(){
+            b.discover();
+        }, 1000);
     }
 }
 
-function BroadlinkSensor(log, sConfig, config) {
+function BroadlinkSensor(log, config) {
     this.log = log;
     this.config = config;
-    this.sname = sconfig.sensorName || "";
     this.serial = sconfig.serial || "";
-    this.type = sconfig.type;
-    this.name = config.name + +"_"+ this.sname;
+    this.type = config.type;
+    this.name = config.name + +"_"+ config.sensorName;
     this.ip = config.ip;
     this.mac = config.mac;
     this.detected = false;
@@ -117,7 +95,6 @@ function BroadlinkSensor(log, sConfig, config) {
 
 BroadlinkSensor.prototype = {
     getServices: function() {
-        var services = [];
         var informationService = new Service.AccessoryInformation();
         informationService
             .setCharacteristic(Characteristic.Manufacturer, 'Broadlink S1C')
@@ -128,18 +105,14 @@ BroadlinkSensor.prototype = {
             MotionhService
                 .getCharacteristic(Characteristic.MotionDetected)
                 .on('get', this.getState.bind(this));
-            services.push(MotionhService, informationService);
+            return [DoorService, informationService];
         } else if (this.type == "Door Sensor"){
             var DoorService = new Service.ContactSensor(this.name, UUIDGen.generate(this.serial));
             DoorService
                 .getCharacteristic(Characteristic.ContactSensorState)
                 .on('get', this.getState.bind(this));
-            services.push(DoorService, informationService);
+            return [DoorService, informationService];
         }
-        
-        
-
-        return services;
     },
 
     getState: function(callback) {
