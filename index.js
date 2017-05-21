@@ -1,436 +1,178 @@
-var util = require('util');
-let EventEmitter = require('events');
-let dgram = require('dgram');
-let os = require('os');
-let crypto = require('crypto');
+var Accessory, Service, Characteristic, UUIDGen;
+var broadlink = require('broadlinkjs-s1c');
 
-var Broadlink = module.exports = function() {
-    EventEmitter.call(this);
-    this.devices = {};
+module.exports = function(homebridge) {
+    Service = homebridge.hap.Service;
+    Characteristic = homebridge.hap.Characteristic;
+    UUIDGen = homebridge.hap.uuid;
+    homebridge.registerPlatform("homebridge-broadlink-s1c", "broadlinkS1C", broadlinkS1C);
 }
-util.inherits(Broadlink, EventEmitter);
 
-
-Broadlink.prototype.genDevice = function(devtype, host, mac) {
-    var dev;
-    if (devtype == 0x2722) { // S1C
-        dev = new device(host, mac);
-        dev.s1c();
-        return dev;
-    // } else if (devtype == 0x2711) { // SP2
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x2719 || devtype == 0x7919 || devtype == 0x271a || devtype == 0x791a) { // Honeywell SP2
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x2720) { // SPMini
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x753e) { // SP3
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x2728) { // SPMini2
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x2733 || devtype == 0x273e) { // OEM branded SPMini Contos
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype >= 0x7530 && devtype <= 0x7918) { // OEM branded SPMini2
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // } else if (devtype == 0x2736) { // SPMiniPlus
-    //     dev = new device(host, mac);
-    //     dev.sp2();
-    //     return dev;
-    // }
-    /*else if (devtype == 0x2712) { // RM2
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x2737) { // RM Mini
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x273d) { // RM Pro Phicomm
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x2783) { // RM2 Home Plus
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x277c) { // RM2 Home Plus GDT
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x272a) { // RM2 Pro Plus
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x2787) { // RM2 Pro Plus2
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x278b) { // RM2 Pro Plus BL
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } else if (devtype == 0x278f) { // RM Mini Shate
-           dev = new device(host, mac);
-           dev.rm();
-           return dev;
-       } */
-    // else if (devtype == 0x2714) { // A1
-    //     dev = new device(host, mac);
-    //     dev.a1();
-    //     return dev;
-    // } else if (devtype == 0x4EB5) { // MP1
-    //     dev = new device(host, mac);
-    //     dev.mp1();
-    //     return dev;
-    } else {
-        //console.log("unknown device found... dev_type: " + devtype.toString(16) + " @ " + host.address);
-        //dev = new device(host, mac);
-        //dev.device();
-        return null;
+function broadlinkS1C(log, config, api) {
+    this.log = log;
+    this.config = config;
+    this.ip = config.ip;
+    this.mac = config.mac;
+    if (api) {
+        this.api = api;
     }
+
 }
 
-Broadlink.prototype.discover = function() {
-    self = this;
-    var interfaces = os.networkInterfaces();
-    var addresses = [];
-    for (var k in interfaces) {
-        for (var k2 in interfaces[k]) {
-            var address = interfaces[k][k2];
-            if (address.family === 'IPv4' && !address.internal) {
-                addresses.push(address.address);
+broadlinkS1C.prototype = {
+    accessories: function(callback) {
+        //For each device in cfg, create an accessory!
+        var foundAccessories = this.config.accessories;
+        var myAccessories = [];
+
+        if (!this.ip && !this.mac) throw new Error("You must provide a config value for 'ip' or 'mac'.");
+
+        // MAC string to MAC buffer
+        this.mac_buff = function(mac) {
+            var mb = new Buffer(6);
+            if (mac) {
+                var values = mac.split(':');
+                if (!values || values.length !== 6) {
+                    throw new Error('Invalid MAC [' + mac + ']; should follow pattern ##:##:##:##:##:##');
+                }
+                for (var i = 0; i < values.length; ++i) {
+                    var tmpByte = parseInt(values[i], 16);
+                    mb.writeUInt8(tmpByte, i);
+                }
+            } else {
+                //this.log("MAC address emtpy, using IP: " + this.ip);
             }
+            return mb;
         }
+
+        for (var j = 0; j < foundAccessories.length; j++){
+            var foundSensor = [{}];
+            var b = new broadlink();
+            b.discover();
+            b.on("deviceReady", (dev) => {
+                if (this.mac_buff(this.mac).equals(dev.mac) || dev.host.address == this.ip) {
+                    if (dev.type == "S1C") {
+                        dev.get_sensors_status();
+                        dev.on("sensors_status", (status_array) => {
+                            var count = status_array["count"];
+                            var sensors = status_array["sensors"];
+                            clearInterval(refresh);
+                            for (var i = 0; i < count; i++) {
+                                if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
+                                    foundSensor[i].sensorName = sensors[i].name;
+                                    foundSensor[i].serial = sensors[i].serial;
+                                    foundSensor[i].type = sensors[i].type;
+                                    var accessory = new BroadlinkSensor(this.log, foundSensor[i], foundAccessories[j]);
+                                    myAccessories.push(accessory);
+                                    this.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
+                                }
+                            }
+                            callback(myAccessories);
+                        });
+                    } else {
+                        console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
+                        dev.exit();
+                    }
+                }
+            });
+            var refresh = setInterval(function(){
+                b.discover();
+            }, 1000);
+        }
+        
     }
-    var address = addresses[0].split('.');
-    var cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    cs.on('listening', function() {
-        cs.setBroadcast(true);
+}
 
-        var port = cs.address().port;
-        var now = new Date();
-        var starttime = now.getTime();
+function BroadlinkSensor(log, sConfig, config) {
+    this.log = log;
+    this.config = config;
+    this.sname = sconfig.sensorName || "";
+    this.serial = sconfig.serial || "";
+    this.type = sconfig.type;
+    this.name = config.name + +"_"+ this.sname;
+    this.ip = config.ip;
+    this.mac = config.mac;
+    this.detected = false;
 
-        var timezone = now.getTimezoneOffset() / -3600;
-        var packet = Buffer.alloc(0x30, 0);
+    if (!this.ip && !this.mac) throw new Error("You must provide a config value for 'ip' or 'mac'.");
 
-        var year = now.getYear();
-
-        if (timezone < 0) {
-            packet[0x08] = 0xff + timezone - 1;
-            packet[0x09] = 0xff;
-            packet[0x0a] = 0xff;
-            packet[0x0b] = 0xff;
+    // MAC string to MAC buffer
+    this.mac_buff = function(mac) {
+        var mb = new Buffer(6);
+        if (mac) {
+            var values = mac.split(':');
+            if (!values || values.length !== 6) {
+                throw new Error('Invalid MAC [' + mac + ']; should follow pattern ##:##:##:##:##:##');
+            }
+            for (var i = 0; i < values.length; ++i) {
+                var tmpByte = parseInt(values[i], 16);
+                mb.writeUInt8(tmpByte, i);
+            }
         } else {
-            packet[0x08] = timezone;
-            packet[0x09] = 0;
-            packet[0x0a] = 0;
-            packet[0x0b] = 0;
+            //this.log("MAC address emtpy, using IP: " + this.ip);
         }
-        packet[0x0c] = year & 0xff;
-        packet[0x0d] = year >> 8;
-        packet[0x0e] = now.getMinutes();
-        packet[0x0f] = now.getHours();
-        var subyear = year % 100;
-        packet[0x10] = subyear;
-        packet[0x11] = now.getDay();
-        packet[0x12] = now.getDate();
-        packet[0x13] = now.getMonth();
-        packet[0x18] = parseInt(address[0]);
-        packet[0x19] = parseInt(address[1]);
-        packet[0x1a] = parseInt(address[2]);
-        packet[0x1b] = parseInt(address[3]);
-        packet[0x1c] = port & 0xff;
-        packet[0x1d] = port >> 8;
-        packet[0x26] = 6;
-        var checksum = 0xbeaf;
+        return mb;
+    }
+}
 
-        for (var i = 0; i < packet.length; i++) {
-            checksum += packet[i];
+BroadlinkSensor.prototype = {
+    getServices: function() {
+        var services = [];
+        var informationService = new Service.AccessoryInformation();
+        informationService
+            .setCharacteristic(Characteristic.Manufacturer, 'Broadlink S1C')
+            .setCharacteristic(Characteristic.Model, this.type)
+            .setCharacteristic(Characteristic.SerialNumber, this.serial);
+        if (this.type == "Motion Sensor"){
+            var MotionhService = new Service.MotionSensor(this.name, UUIDGen.generate(this.serial));
+            MotionhService
+                .getCharacteristic(Characteristic.MotionDetected)
+                .on('get', this.getState.bind(this));
+        } else if (this.type == "Door Sensor"){
+            var DoorService = new Service.ContactSensor(this.name, UUIDGen.generate(this.serial));
+            DoorService
+                .getCharacteristic(Characteristic.ContactSensorState)
+                .on('get', this.getState.bind(this));
         }
-        checksum = checksum & 0xffff;
-        packet[0x20] = checksum & 0xff;
-        packet[0x21] = checksum >> 8;
+        
+        services.push(switchService, informationService);
 
-        cs.sendto(packet, 0, packet.length, 80, '255.255.255.255');
+        return services;
+    },
 
-    });
+    getState: function(callback) {
+        var self = this;
+        var b = new broadlink();
+        b.discover();
 
-    cs.on("message", (msg, rinfo) => {
-        var host = rinfo;
-
-        var mac = Buffer.alloc(6, 0);
-        msg.copy(mac, 0x00, 0x3F);
-        msg.copy(mac, 0x01, 0x3E);
-        msg.copy(mac, 0x02, 0x3D);
-        msg.copy(mac, 0x03, 0x3C);
-        msg.copy(mac, 0x04, 0x3B);
-        msg.copy(mac, 0x05, 0x3A);
-
-        var devtype = msg[0x34] | msg[0x35] << 8;
-        if (!this.devices) {
-            this.devices = {};
-        }
-
-        if (!this.devices[mac]) {
-            var dev = this.genDevice(devtype, host, mac);
-            if (dev) {
-                this.devices[mac] = dev;
-                dev.on("deviceReady", () => { this.emit("deviceReady", dev); });
-                dev.auth();
+        b.on("deviceReady", (dev) => {
+            if (self.mac_buff(self.mac).equals(dev.mac) || dev.host.address == self.ip) {
+                dev.get_sensors_status();
+                dev.on("sensors_status", (status_array) => {
+                    var sensors = status_array["sensors"];
+                    var count = status_array["count"];
+                    dev.exit();
+                    clearInterval(checkAgain);
+                    self.log(self.name + self.sname + " power is on - " + pwr);
+                    for (var i=0; i<count; i++){
+                        if (self.serial == sensors[i].serial){
+                            if (sensors[i].status = 0) {
+                            self.detected = false;
+                            return callback(null, false);
+                        } else {
+                            self.detected = true;
+                            return callback(null, true);
+                        }
+                        }
+                    }
+                });
+            } else {
+                dev.exit();
             }
-        }
-    });
-
-    cs.on('close', function() {
-        //console.log('===Server Closed');
-    });
-
-    cs.bind();
-
-    setTimeout(function() {
-        cs.close();
-    }, 300);
-}
-
-function device(host, mac, timeout = 10) {
-    this.host = host;
-    this.mac = mac;
-    this.emitter = new EventEmitter();
-
-    this.on = this.emitter.on;
-    this.emit = this.emitter.emit;
-    this.removeListener = this.emitter.removeListener;
-
-    this.timeout = timeout;
-    this.count = Math.random() & 0xffff;
-    this.key = new Buffer([0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02]);
-    this.iv = new Buffer([0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58]);
-    this.id = new Buffer([0, 0, 0, 0]);
-    this.cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    this.cs.on('listening', function() {
-        //this.cs.setBroadcast(true);
-    });
-    this.cs.on("message", (response, rinfo) => {
-        var enc_payload = Buffer.alloc(response.length - 0x38, 0);
-        response.copy(enc_payload, 0, 0x38);
-
-        var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
-        decipher.setAutoPadding(false);
-        var payload = decipher.update(enc_payload);
-        var p2 = decipher.final();
-        if (p2) {
-            payload = Buffer.concat([payload, p2]);
-        }
-
-        if (!payload) {
-            return false;
-        }
-
-        var command = response[0x26];
-        var err = response[0x22] | (response[0x23] << 8);
-
-        if (err != 0) return;
-
-        if (command == 0xe9) {
-            this.key = Buffer.alloc(0x10, 0);
-            payload.copy(this.key, 0, 0x04, 0x14);
-
-            this.id = Buffer.alloc(0x04, 0);
-            payload.copy(this.id, 0, 0x00, 0x04);
-            this.emit("deviceReady");
-        } else if (command == 0xee) {
-            this.emit("payload", err, payload);
-        }
-
-    });
-    this.cs.bind();
-    this.type = "Unknown";
-
-}
-
-device.prototype.auth = function() {
-    var payload = Buffer.alloc(0x50, 0);
-    payload[0x04] = 0x31;
-    payload[0x05] = 0x31;
-    payload[0x06] = 0x31;
-    payload[0x07] = 0x31;
-    payload[0x08] = 0x31;
-    payload[0x09] = 0x31;
-    payload[0x0a] = 0x31;
-    payload[0x0b] = 0x31;
-    payload[0x0c] = 0x31;
-    payload[0x0d] = 0x31;
-    payload[0x0e] = 0x31;
-    payload[0x0f] = 0x31;
-    payload[0x10] = 0x31;
-    payload[0x11] = 0x31;
-    payload[0x12] = 0x31;
-    payload[0x1e] = 0x01;
-    payload[0x2d] = 0x01;
-    payload[0x30] = 'T'.charCodeAt(0);
-    payload[0x31] = 'e'.charCodeAt(0);
-    payload[0x32] = 's'.charCodeAt(0);
-    payload[0x33] = 't'.charCodeAt(0);
-    payload[0x34] = ' '.charCodeAt(0);
-    payload[0x35] = ' '.charCodeAt(0);
-    payload[0x36] = '1'.charCodeAt(0);
-
-    this.sendPacket(0x65, payload);
-
-}
-
-device.prototype.exit = function() {
-    var self = this;
-    setTimeout(function() {
-        self.cs.close();
-    }, 500);
-}
-
-device.prototype.getType = function() {
-    return this.type;
-}
-
-device.prototype.sendPacket = function(command, payload) {
-    this.count = (this.count + 1) & 0xffff;
-    var packet = Buffer.alloc(0x38, 0);
-    packet[0x00] = 0x5a;
-    packet[0x01] = 0xa5;
-    packet[0x02] = 0xaa;
-    packet[0x03] = 0x55;
-    packet[0x04] = 0x5a;
-    packet[0x05] = 0xa5;
-    packet[0x06] = 0xaa;
-    packet[0x07] = 0x55;
-    packet[0x24] = 0x2a;
-    packet[0x25] = 0x27;
-    packet[0x26] = command;
-    packet[0x28] = this.count & 0xff;
-    packet[0x29] = this.count >> 8;
-    packet[0x2a] = this.mac[0];
-    packet[0x2b] = this.mac[1];
-    packet[0x2c] = this.mac[2];
-    packet[0x2d] = this.mac[3];
-    packet[0x2e] = this.mac[4];
-    packet[0x2f] = this.mac[5];
-    packet[0x30] = this.id[0];
-    packet[0x31] = this.id[1];
-    packet[0x32] = this.id[2];
-    packet[0x33] = this.id[3];
-
-    var checksum = 0xbeaf;
-    for (var i = 0; i < payload.length; i++) {
-        checksum += payload[i];
-        checksum = checksum & 0xffff;
-    }
-
-    var cipher = crypto.createCipheriv('aes-128-cbc', this.key, this.iv);
-    payload = cipher.update(payload);
-    var p2 = cipher.final();
-
-    packet[0x34] = checksum & 0xff;
-    packet[0x35] = checksum >> 8;
-
-    packet = Buffer.concat([packet, payload]);
-
-    checksum = 0xbeaf;
-    for (var i = 0; i < packet.length; i++) {
-        checksum += packet[i];
-        checksum = checksum & 0xffff;
-    }
-    packet[0x20] = checksum & 0xff;
-    packet[0x21] = checksum >> 8;
-    //console.log("dev send packet to " + this.host.address + ":" + this.host.port);
-    this.cs.sendto(packet, 0, packet.length, this.host.port, this.host.address);
-}
-
-device.prototype.s1c = function() {
-    this.type = "S1C";
-    this.get_sensors_status = function() {
-        //"""Returns the sensors state of the s1c"""
-        var packet = Buffer.alloc(16, 0);
-        packet[0] = 0x06
-        this.sendPacket(0x6a, packet);
+        });
+        var checkAgain = setInterval(function() {
+            b.discover();
+        }, 1000)
 
     }
-
-    this.on("payload", (err, payload) => {
-        var param = payload[0];
-
-        switch (param) {
-            case 6: //get from get_sensors_status
-                var count = payload[4];
-                var j, k, sensors;
-                sensors = [];
-                for (j = 0; j < count; j++) {
-                    var sensor = {};
-                    switch (payload[(j*83) + 3 + 6]){
-                        case 33:
-                            sensor.type = "Motion Sensor";
-                            break;
-                        case 49:
-                            sensor.type = "Door Sensor";
-                            break;
-                    }
-                    switch (payload[(j*83) + 6]){
-                        case 0:
-                            sensor.status = 0;
-                            break;
-                        case 128:
-                            sensor.status = 0;
-                            break;
-                        case 16:
-                            sensor.status = 1;
-                            break;
-                        case 144:
-                            sensor.status = 1;
-                            break;
-                    }
-                    sensor.name = Buffer.alloc(22, 0);
-                    for (var i=4; i < 26; i++){
-                        sensor.name[i-4] = payload[(j*83)+i+6]
-                    }
-                    var sensorSerial = Buffer.alloc(4, 0);
-                    for (var i=26; i < 30; i++){
-                        sensorSerial[i-26] = payload[(j*83)+i+6]
-                    }
-                    sensor.serial = unescape(encodeURIComponent(sensorSerial))
-                        .split('').map(function(v){
-                            return v.charCodeAt(0).toString(16)
-                        }).join('')
-                    
-                    // console.log("sensor #" + (j+1) + " name: " + sensor.name)
-                    // console.log("sensor #" + (j+1) + " type: " + sensor.type)
-                    // console.log("sensor #" + (j+1) + " status: " + sensor.status);
-                    // console.log("sensor #" + (j+1) + " serial: " + sensor.serial)
-                    sensors.push(sensor);
-                }
-                var results = {
-                    'count': count,
-                    'sensors': sensors
-                }
-                this.emit("sensors_status", results);
-                break;
-            case 3:
-                console.log('case 3');
-                break;
-            case 4:
-                console.log('case 4');
-                break;
-        }
-
-    });
 }
