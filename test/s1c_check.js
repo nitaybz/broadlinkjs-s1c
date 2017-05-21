@@ -1,5 +1,5 @@
 'use strict';
-let broadlink = require('../../broadlinkjs-sm');
+let broadlink = require('../../broadlinkjs-s1c');
 let fs = require('fs');
 
 var b = new broadlink();
@@ -11,9 +11,17 @@ b.on("deviceReady", (dev) => {
         console.log("S1C check power...");
         dev.get_sensors_status();
         clearInterval(refresh);
-        dev.on("power", (status_array) => {
-            console.log("count is on " + status_array["count"]);
-            console.log("sensors is on " + status_array["sensors"]);
+        dev.on("sensors_status", (status_array) => {
+            
+            var count = status_array["count"];
+            var sensors = status_array["sensors"]
+            console.log("How Many Sensors? " + count);
+            for (var i=0; i<count; i++){
+                console.log("Sensor #"+(i+1)+" Name: " + sensors[i].name);
+                console.log("Sensor #"+(i+1)+" Type: " + sensors[i].type);
+                console.log("Sensor #"+(i+1)+" Status: " + sensors[i].status);
+                console.log("Sensor #"+(i+1)+" Serial: " + sensors[i].serial);
+            }
         });
         
     } else {
