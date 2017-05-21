@@ -4,8 +4,8 @@ var broadlink = require('broadlinkjs-s1c');
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerPlatform("homebridge-broadlink-s1c", "broadlinkS1C", broadlinkS1C);
     UUIDGen = homebridge.hap.uuid;
+    homebridge.registerPlatform("homebridge-broadlink-s1c", "broadlinkS1C", broadlinkS1C);
 }
 
 function broadlinkS1C(log, config, api) {
@@ -128,14 +128,16 @@ BroadlinkSensor.prototype = {
             MotionhService
                 .getCharacteristic(Characteristic.MotionDetected)
                 .on('get', this.getState.bind(this));
+            services.push(MotionhService, informationService);
         } else if (this.type == "Door Sensor"){
             var DoorService = new Service.ContactSensor(this.name, UUIDGen.generate(this.serial));
             DoorService
                 .getCharacteristic(Characteristic.ContactSensorState)
                 .on('get', this.getState.bind(this));
+            services.push(DoorService, informationService);
         }
         
-        services.push(switchService, informationService);
+        
 
         return services;
     },
