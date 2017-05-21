@@ -47,7 +47,11 @@ declare namespace Broadlink {
          */
         sendPacket(command: number, payload: Buffer): void;
     }
+    
+    export class S1C extends Device {
 
+    }
+    
     export class MP1 extends Device {
 
     }
