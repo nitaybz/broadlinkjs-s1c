@@ -2,6 +2,7 @@ var Accessory, Service, Characteristic, UUIDGen;
 var broadlink = require('broadlinkjs-s1c');
 
 module.exports = function(homebridge) {
+    this.log("Starting");
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
@@ -26,6 +27,7 @@ broadlinkS1C.prototype = {
         var myAccessories = [];
         var foundSensor = [{}];
         var b = new broadlink();
+        this.log("Discovering");
         b.discover();
         b.on("deviceReady", (dev) => {
             if (this.mac_buff(this.mac).equals(dev.mac) || dev.host.address == this.ip) {
@@ -101,12 +103,14 @@ BroadlinkSensor.prototype = {
             .setCharacteristic(Characteristic.Model, this.type)
             .setCharacteristic(Characteristic.SerialNumber, this.serial);
         if (this.type == "Motion Sensor"){
+            console.log("found motion sensor");
             var MotionhService = new Service.MotionSensor(this.name, UUIDGen.generate(this.serial));
             MotionhService
                 .getCharacteristic(Characteristic.MotionDetected)
                 .on('get', this.getState.bind(this));
             return [DoorService, informationService];
         } else if (this.type == "Door Sensor"){
+            console.log("found door sensor");
             var DoorService = new Service.ContactSensor(this.name, UUIDGen.generate(this.serial));
             DoorService
                 .getCharacteristic(Characteristic.ContactSensorState)
