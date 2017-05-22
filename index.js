@@ -108,14 +108,14 @@ BroadlinkSensor.prototype = {
             .setCharacteristic(Characteristic.SerialNumber, this.serial);
         if (this.type == "Motion Sensor"){
             console.log("found motion sensor");
-            var MotionhService = new Service.MotionSensor(this.name, UUIDGen.generate(this.serial));
-            MotionhService
+            var MotionService = new Service.MotionSensor(this.name);
+            MotionService
                 .getCharacteristic(Characteristic.MotionDetected)
                 .on('get', this.getState.bind(this));
-            return [DoorService, informationService];
+            return [MotionService, informationService];
         } else if (this.type == "Door Sensor"){
             console.log("found door sensor");
-            var DoorService = new Service.ContactSensor(this.name, UUIDGen.generate(this.serial));
+            var DoorService = new Service.ContactSensor(this.name);
             DoorService
                 .getCharacteristic(Characteristic.ContactSensorState)
                 .on('get', this.getState.bind(this));
