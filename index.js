@@ -2,7 +2,6 @@ var Accessory, Service, Characteristic, UUIDGen;
 var broadlink = require('broadlinkjs-s1c');
 
 module.exports = function(homebridge) {
-    this.log("Starting");
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
@@ -24,38 +23,37 @@ function broadlinkS1C(log, config, api) {
 broadlinkS1C.prototype = {
     accessories: function(callback) {
         //For each device in cfg, create an accessory!
+        var self = this;
         var myAccessories = [];
         var foundSensor = [{}];
         var b = new broadlink();
-        this.log("Discovering");
+        self.log("Discovering");
         b.discover();
         b.on("deviceReady", (dev) => {
-            if (this.mac_buff(this.mac).equals(dev.mac) || dev.host.address == this.ip) {
-                if (dev.type == "S1C") {
-                    dev.get_sensors_status();
-                    dev.on("sensors_status", (status_array) => {
-                        var count = status_array["count"];
-                        var sensors = status_array["sensors"];
-                        clearInterval(refresh);
-                        for (var i = 0; i < count; i++) {
-                            if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
-                                foundSensor[i].accessoryName = this.name;
-                                foundSensor[i].sensorName = sensors[i].name;
-                                foundSensor[i].serial = sensors[i].serial;
-                                foundSensor[i].type = sensors[i].type;
-                                foundSensor[i].ip = sensors[i].ip;
-                                foundSensor[i].mac = sensors[i].mac;
-                                var accessory = new BroadlinkSensor(this.log, foundSensor[i]);
-                                myAccessories.push(accessory);
-                                this.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
-                            }
+            if (dev.type == "S1C") {
+                dev.get_sensors_status();
+                dev.on("sensors_status", (status_array) => {
+                    var count = status_array["count"];
+                    var sensors = status_array["sensors"];
+                    clearInterval(refresh);
+                    for (var i = 0; i < count; i++) {
+                        if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
+                            foundSensor[i].accessoryName = self.name;
+                            foundSensor[i].sensorName = sensors[i].name;
+                            foundSensor[i].serial = sensors[i].serial;
+                            foundSensor[i].type = sensors[i].type;
+                            foundSensor[i].ip = sensors[i].ip;
+                            foundSensor[i].mac = sensors[i].mac;
+                            var accessory = new BroadlinkSensor(self.log, foundSensor[i]);
+                            myAccessories.push(accessory);
+                            self.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
                         }
-                        callback(myAccessories);
-                    });
-                } else {
-                    console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
-                    dev.exit();
-                }
+                    }
+                    callback(myAccessories);
+                });
+            } else {
+                console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
+                dev.exit();
             }
         });
         var refresh = setInterval(function(){
