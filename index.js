@@ -1,23 +1,3 @@
-Skip to content
-This repository
-Search
-Pull requests
-Issues
-Marketplace
-Gist
- @nitaybz
- Sign out
- Unwatch 0
-  Star 0
-  Fork 5 nitaybz/broadlinkjs-s1c
-forked from smka/broadlinkjs-sm
- Code  Issues 0  Pull requests 0  Projects 0  Wiki  Pulse  Graphs  Settings
-Tree: 3b8059005b Find file Copy pathbroadlinkjs-s1c/index.js
-3b80590  18 hours ago
-@nitaybz nitaybz Update index.js
-4 contributors @nitaybz @smka @wind-rider @clkao
-RawBlameHistory     
-Executable File  437 lines (390 sloc)  13.4 KB
 var util = require('util');
 let EventEmitter = require('events');
 let dgram = require('dgram');
