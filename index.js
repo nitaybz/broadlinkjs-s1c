@@ -403,6 +403,8 @@ device.prototype.s1c = function() {
                     for (var i=4; i < 26; i++){
                         sensor.name[i-4] = payload[(j*83)+i+6]
                     }
+                    sensor.name = sensor.name.toString('utf8').replace(/\0/g, '');
+                    
                     var sensorSerial = Buffer.alloc(4, 0);
                     for (var i=26; i < 30; i++){
                         sensorSerial[i-26] = payload[(j*83)+i+6]
