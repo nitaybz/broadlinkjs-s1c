@@ -18,48 +18,53 @@ function broadlinkS1C(log, config, api) {
         this.api = api;
     }
 
+    this.log("Discovering");
+    
+    
+    var b = new broadlink();
+    this.log("Discovering");
+    b.discover();
+    b.on("deviceReady", (dev) => {
+        if (dev.type == "S1C") {
+            dev.get_sensors_status();
+            dev.on("sensors_status", (status_array) => {
+                dev.exit();
+                clearInterval(refresh);
+                this.count = status_array["count"];
+                this.sensors = status_array["sensors"];
+            });
+        } else {
+            console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
+            dev.exit();
+        }
+    });
+    var refresh = setInterval(function(){
+        b.discover();
+    }, 1000);
+
+
+
 }
 
 broadlinkS1C.prototype = {
     accessories: function(callback) {
         //For each device in cfg, create an accessory!
-        this.log("Discovering");
-        var self = this;
         var myAccessories = [];
         var foundSensor = [{}];
-        var b = new broadlink();
-        self.log("Discovering");
-        b.discover();
-        b.on("deviceReady", (dev) => {
-            if (dev.type == "S1C") {
-                dev.get_sensors_status();
-                dev.on("sensors_status", (status_array) => {
-                    var count = status_array["count"];
-                    var sensors = status_array["sensors"];
-                    clearInterval(refresh);
-                    for (var i = 0; i < count; i++) {
-                        if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
-                            foundSensor[i].accessoryName = self.name;
-                            foundSensor[i].sensorName = sensors[i].name;
-                            foundSensor[i].serial = sensors[i].serial;
-                            foundSensor[i].type = sensors[i].type;
-                            foundSensor[i].ip = sensors[i].ip;
-                            foundSensor[i].mac = sensors[i].mac;
-                            var accessory = new BroadlinkSensor(self.log, foundSensor[i]);
-                            myAccessories.push(accessory);
-                            self.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
-                        }
+        for (var i = 0; i < this.count; i++) {
+                    if (sensors[i].type == ("Motion Sensor" || "Door Sensor")) {
+                        foundSensor[i].accessoryName = this.name;
+                        foundSensor[i].sensorName = this.sensors[i].name;
+                        foundSensor[i].serial = this.sensors[i].serial;
+                        foundSensor[i].type = this.sensors[i].type;
+                        foundSensor[i].ip = this.sensors[i].ip;
+                        foundSensor[i].mac = this.sensors[i].mac;
+                        var accessory = new BroadlinkSensor(this.log, foundSensor[i]);
+                        myAccessories.push(accessory);
+                        this.log('Created ' + accessory.name + accessory.type +' Named: ' + accessory.sensorName);
                     }
-                    callback(myAccessories);
-                });
-            } else {
-                console.log(dev.type + "@" + dev.host.address + " found... not S1C!");
-                dev.exit();
-            }
-        });
-        var refresh = setInterval(function(){
-            b.discover();
-        }, 1000);
+                }
+        callback(myAccessories);
     }
 }
 
