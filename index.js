@@ -101,6 +101,7 @@ function BroadlinkSensor(log, config) {
 
 BroadlinkSensor.prototype = {
     getServices: function() {
+        console.log("getting Service");
         var informationService = new Service.AccessoryInformation();
         informationService
             .setCharacteristic(Characteristic.Manufacturer, 'Broadlink S1C')
