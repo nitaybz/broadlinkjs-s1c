@@ -1,10 +1,10 @@
-var Accessory, Service, Characteristic, UUIDGen;
+var Accessory, Service, Characteristic;
 var broadlink = require('broadlinkjs-s1c');
 
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    UUIDGen = homebridge.hap.uuid;
+    //UUIDGen = homebridge.hap.uuid;
     homebridge.registerPlatform("homebridge-broadlink-s1c", "broadlinkS1C", broadlinkS1C);
 }
 
@@ -23,6 +23,7 @@ function broadlinkS1C(log, config, api) {
 broadlinkS1C.prototype = {
     accessories: function(callback) {
         //For each device in cfg, create an accessory!
+        this.log("Discovering");
         var self = this;
         var myAccessories = [];
         var foundSensor = [{}];
