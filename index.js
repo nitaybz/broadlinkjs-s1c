@@ -115,7 +115,11 @@ Broadlink.prototype.discover = function() {
             }
         }
     }
-    var address = addresses[0].split('.');
+    try{
+        var address = addresses[0].split('.');
+    } catch(e){
+     console.log(e);
+    }
     var cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     cs.on('listening', function() {
         cs.setBroadcast(true);
@@ -231,9 +235,13 @@ function device(host, mac, timeout = 10) {
         var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
         decipher.setAutoPadding(false);
         var payload = decipher.update(enc_payload);
-        var p2 = decipher.final();
-        if (p2) {
-            payload = Buffer.concat([payload, p2]);
+        try {
+            var p2 = decipher.final();
+            if (p2) {
+                payload = Buffer.concat([payload, p2]);
+            }
+        } catch(e){
+        console.log(e)
         }
 
         if (!payload) {
