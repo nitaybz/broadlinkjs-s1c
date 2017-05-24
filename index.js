@@ -118,7 +118,6 @@ Broadlink.prototype.discover = function() {
     try{
         var address = addresses[0].split('.');
     } catch(e){
-     console.log(e);
     }
     var cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     cs.on('listening', function() {
@@ -241,7 +240,6 @@ function device(host, mac, timeout = 10) {
                 payload = Buffer.concat([payload, p2]);
             }
         } catch(e){
-        console.log(e)
         }
 
         if (!payload) {
