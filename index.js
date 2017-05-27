@@ -372,7 +372,14 @@ device.prototype.s1c = function() {
         this.sendPacket(0x6a, packet);
 
     }
-
+    
+    this.set_state = function(state) {
+        var packet = Buffer.alloc(16, 0);
+        packet[0] = 11;
+        packet[4] = state ? 2 : 0;
+        this.sendPacket(0x6a, packet);
+    }
+    
     this.on("payload", (err, payload) => {
         var param = payload[0];
 
