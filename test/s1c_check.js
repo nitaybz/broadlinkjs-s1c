@@ -23,7 +23,10 @@ b.on("deviceReady", (dev) => {
                 console.log("Sensor #"+(i+1)+" Serial: " + sensors[i].serial);
             }
         });
-        
+        setTimeout(function(){
+            console.log("setting state");
+            dev.set_state(true);
+        }, 3000);
     } else {
         console.log(dev.type + "@" + dev.host.address + " found... not MP1!");
         dev.exit();
