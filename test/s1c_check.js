@@ -1,5 +1,5 @@
 'use strict';
-let broadlink = require('../../broadlinkjs-sm');
+let broadlink = require('../../broadlinkjs-s1c');
 let fs = require('fs');
 
 var b = new broadlink();
@@ -23,7 +23,32 @@ b.on("deviceReady", (dev) => {
                 console.log("Sensor #"+(i+1)+" Serial: " + sensors[i].serial);
             }
         });
-        
+        dev.get_alarm_status();
+        dev.on("alarm_status", (status) => {
+                console.log("Alarm Status is " + status);
+            });
+        dev.get_trigger_status();
+        dev.on("triggerd_status", (status) => {
+                console.log("Alarm is Triggered = " + status);
+            });
+        setTimeout(function(){
+            console.log("setting state full arm");
+            dev.set_state("full_arm", false, false);
+        }, 3000);
+        setTimeout(function(){
+            console.log("getting state");
+            dev.get_alarm_status();
+            dev.get_trigger_status();
+        }, 8000);
+        setTimeout(function(){
+            console.log("setting state disarm");
+            dev.set_state("disarm", false, false);
+        }, 12000);
+        setTimeout(function(){
+            console.log("getting state");
+            dev.get_alarm_status();
+            dev.get_trigger_status();
+        }, 15000);
     } else {
         console.log(dev.type + "@" + dev.host.address + " found... not MP1!");
         dev.exit();
