@@ -372,10 +372,53 @@ device.prototype.s1c = function() {
         this.sendPacket(0x6a, packet);
 
     }
+    this.get_alarm_status = function() {
+        //"""Returns the sensors state of the s1c"""
+        var packet = Buffer.alloc(16, 0);
+        packet[0] = 0x12;
+        this.sendPacket(0x6a, packet);
+    }
 
+    this.get_trigger_status = function() {
+        //"""Returns the sensors state of the s1c"""
+        var packet = Buffer.alloc(16, 0);
+        packet[0] = 0x10;
+        this.sendPacket(0x6a, packet);
+    }
+    
+    this.set_state = function(state, notification_sound, alarm_sound) {
+        var packet = Buffer.alloc(16, 0);
+        packet[0] = 0x11;
+        switch (state){
+            case "full_arm":
+                packet[4] = 0x02;
+                break;
+            case "part_arm":
+                packet[4] = 0x01;
+                break;
+            case "disarm":
+                packet[4] = 0x00;
+                break;
+        }
+        if (!notification_sound){
+                packet[13] = 0x02;
+        }
+        if (!alarm_sound){
+                packet[10] = 0x01;
+        }
+        
+        this.sendPacket(0x6a, packet);
+    }
+    
     this.on("payload", (err, payload) => {
+        //console.log("payload: " + payload);
         var param = payload[0];
-
+        var logs = "";
+        // for (l=0;l<payload.length;l++){
+        //     logs +=payload[l].toString(16);
+        // }
+        // console.log(logs);
+        //console.log("param: " + param);
         switch (param) {
             case 6: //get from get_sensors_status
                 var count = payload[4];
@@ -432,11 +475,35 @@ device.prototype.s1c = function() {
                 }
                 this.emit("sensors_status", results);
                 break;
-            case 3:
-                console.log('case 3');
+
+            case 16:
+            var triggered = false;
+                for (var i=1; i<=16; i++){
+                     if (payload[i*2+4] ==  1){
+                        triggered = true;
+                     };
+                     //console.log("sensor "+ (i) +" - " + payload[i*2+4])
+                } 
+                this.emit("triggerd_status", triggered);
                 break;
-            case 4:
-                console.log('case 4');
+
+            case 18:
+                // for (i=0;i<payload.length;i++){
+                //     console.log("payload["+i+"]  "+payload[i]);
+                // }
+                var status;
+                switch(payload[4]){
+                    case 0:
+                        status = "Cancel Alarm";
+                        break;
+                    case 1:
+                        status = "Part-Arm";
+                        break;
+                    case 2:
+                        status = "Full-Arm";
+                        break;  
+                }
+                this.emit("alarm_status", status);
                 break;
         }
 
