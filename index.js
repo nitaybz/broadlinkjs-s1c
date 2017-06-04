@@ -115,10 +115,8 @@ Broadlink.prototype.discover = function() {
             }
         }
     }
-    try{
-        var address = addresses[0].split('.');
-    } catch(e){
-    }
+    var address = addresses[0].split('.');
+
     var cs = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     cs.on('listening', function() {
         cs.setBroadcast(true);
@@ -230,11 +228,10 @@ function device(host, mac, timeout = 10) {
     this.cs.on("message", (response, rinfo) => {
         var enc_payload = Buffer.alloc(response.length - 0x38, 0);
         response.copy(enc_payload, 0, 0x38);
-
-        var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
-        decipher.setAutoPadding(false);
-        var payload = decipher.update(enc_payload);
         try {
+            var decipher = crypto.createDecipheriv('aes-128-cbc', this.key, this.iv);
+            decipher.setAutoPadding(false);
+            var payload = decipher.update(enc_payload);
             var p2 = decipher.final();
             if (p2) {
                 payload = Buffer.concat([payload, p2]);
