@@ -1,6 +1,6 @@
 {
   "name": "broadlinkjs-s1c",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Node.JS library for controlling Broadlink SmartOne (S1C) Alarm Kit",
   "main": "index.js",
   "types": "index.d.ts",
